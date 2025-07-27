@@ -10,6 +10,7 @@ export interface TraineeRegistrationData {
   phone: string;
   verificationMethod: 'email' | 'phone';
   verificationCode: string;
+  sponsorId?: string;
 }
 
 export interface TraineeWithUser {
@@ -20,6 +21,7 @@ export interface TraineeWithUser {
   gender: 'male' | 'female';
   state: string;
   lga: string;
+  sponsorId?: string | null;
   roomNumber: string | null;
   roomBlock: string | null;
   verificationMethod: 'email' | 'phone';
@@ -31,6 +33,7 @@ export interface TraineeWithUser {
     email: string;
     phone: string;
   };
+  sponsor?: Sponsor | null;
 }
 
 export interface ApiResponse<T = any> {
@@ -44,4 +47,12 @@ export interface VerificationResponse {
   message: string;
   isExpired?: boolean;
   code?: string; // Only in development
+}
+
+export interface Sponsor {
+  id: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
 }

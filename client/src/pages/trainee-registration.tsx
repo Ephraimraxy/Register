@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { MultiStepForm } from "@/components/ui/multi-step-form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { NIGERIAN_STATES, STATES_LGAS } from "@/lib/constants";
-import type { TraineeRegistrationData, VerificationResponse, ApiResponse } from "@/lib/types";
+import type { TraineeRegistrationData, VerificationResponse, ApiResponse, Sponsor } from "@/lib/types";
 
 const registrationSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -28,6 +28,7 @@ const registrationSchema = z.object({
   phone: z.string().regex(/^(\+234|0)[789][01]\d{8}$/, "Please enter a valid Nigerian phone number"),
   verificationMethod: z.enum(["email", "phone"], { required_error: "Verification method is required" }),
   verificationCode: z.string().length(6, "Verification code must be 6 characters"),
+  sponsorId: z.string().optional(),
 });
 
 const steps = [
@@ -57,12 +58,25 @@ export default function TraineeRegistrationPage() {
       phone: "",
       verificationMethod: undefined,
       verificationCode: "",
+      sponsorId: "",
     },
   });
 
   const selectedState = form.watch("state");
   const selectedMethod = form.watch("verificationMethod");
   const verificationCode = form.watch("verificationCode");
+
+  // Fetch sponsors for selection
+  const { data: sponsors = [] } = useQuery({
+    queryKey: ["/api/sponsors"],
+    queryFn: async () => {
+      const response = await fetch("/api/sponsors");
+      if (!response.ok) {
+        throw new Error("Failed to fetch sponsors");
+      }
+      return response.json() as Promise<Sponsor[]>;
+    },
+  });
 
   const sendCodeMutation = useMutation({
     mutationFn: async (data: { identifier: string; method: 'email' | 'phone' }) => {
@@ -444,6 +458,32 @@ export default function TraineeRegistrationPage() {
                           )}
                         />
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name="sponsorId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sponsor</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select sponsor or choose self-sponsored" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="">Self Sponsored</SelectItem>
+                                {sponsors.map((sponsor: Sponsor) => (
+                                  <SelectItem key={sponsor.id} value={sponsor.id}>
+                                    {sponsor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <div className="flex justify-between">
                         <Button type="button" variant="outline" onClick={handlePrevious}>

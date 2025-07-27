@@ -4,11 +4,13 @@ import {
   staff, 
   resourcePersons, 
   verificationCodes,
+  sponsors,
   type User, 
   type InsertUser,
   type Trainee,
   type InsertTrainee,
   type TraineeWithUser,
+  type TraineeWithUserAndSponsor,
   type Staff,
   type InsertStaff,
   type StaffWithUser,
@@ -16,7 +18,9 @@ import {
   type InsertResourcePerson,
   type ResourcePersonWithUser,
   type VerificationCode,
-  type InsertVerificationCode
+  type InsertVerificationCode,
+  type Sponsor,
+  type InsertSponsor
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc } from "drizzle-orm";
@@ -31,8 +35,8 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   
   // Trainee methods
-  getTrainee(id: string): Promise<TraineeWithUser | undefined>;
-  getAllTrainees(): Promise<TraineeWithUser[]>;
+  getTrainee(id: string): Promise<TraineeWithUserAndSponsor | undefined>;
+  getAllTrainees(): Promise<TraineeWithUserAndSponsor[]>;
   createTrainee(trainee: InsertTrainee): Promise<Trainee>;
   updateTrainee(id: string, updates: Partial<Trainee>): Promise<Trainee | undefined>;
   deleteTrainee(id: string): Promise<boolean>;
@@ -52,6 +56,12 @@ export interface IStorage {
   getVerificationCode(identifier: string, code: string): Promise<VerificationCode | undefined>;
   markVerificationCodeAsUsed(id: string): Promise<void>;
   cleanupExpiredCodes(): Promise<void>;
+
+  // Sponsor methods
+  getAllSponsors(): Promise<Sponsor[]>;
+  createSponsor(sponsor: InsertSponsor): Promise<Sponsor>;
+  updateSponsor(id: string, updates: Partial<Sponsor>): Promise<Sponsor | undefined>;
+  deleteSponsor(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -89,33 +99,37 @@ export class DatabaseStorage implements IStorage {
     return updatedUser || undefined;
   }
 
-  async getTrainee(id: string): Promise<TraineeWithUser | undefined> {
+  async getTrainee(id: string): Promise<TraineeWithUserAndSponsor | undefined> {
     const [result] = await db.select()
       .from(trainees)
       .innerJoin(users, eq(trainees.userId, users.id))
+      .leftJoin(sponsors, eq(trainees.sponsorId, sponsors.id))
       .where(eq(trainees.id, id));
     
     if (!result) return undefined;
     
     return {
       ...result.trainees,
-      user: result.users
+      user: result.users,
+      sponsor: result.sponsors || null
     };
   }
 
-  async getAllTrainees(): Promise<TraineeWithUser[]> {
+  async getAllTrainees(): Promise<TraineeWithUserAndSponsor[]> {
     const results = await db.select()
       .from(trainees)
       .innerJoin(users, eq(trainees.userId, users.id))
+      .leftJoin(sponsors, eq(trainees.sponsorId, sponsors.id))
       .orderBy(trainees.tagNumber);
     
     return results.map(result => ({
       ...result.trainees,
-      user: result.users
+      user: result.users,
+      sponsor: result.sponsors || null
     }));
   }
 
-  async createTrainee(trainee: InsertTrainee): Promise<Trainee> {
+  async createTrainee(trainee: InsertTrainee & { tagNumber: string; roomBlock?: string; roomNumber?: string }): Promise<Trainee> {
     const [newTrainee] = await db.insert(trainees).values(trainee).returning();
     return newTrainee;
   }
@@ -130,7 +144,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTrainee(id: string): Promise<boolean> {
     const result = await db.delete(trainees).where(eq(trainees.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getNextTagNumber(): Promise<string> {
@@ -177,7 +191,7 @@ export class DatabaseStorage implements IStorage {
     
     // Find available room
     for (const block of blocks) {
-      const range = roomRanges[block];
+      const range = roomRanges[block as keyof typeof roomRanges];
       for (let roomNum = range.start; roomNum <= range.end; roomNum += 2) { // Even numbers only
         const roomKey = `${block}-${roomNum}`;
         const occupancy = roomOccupancy[roomKey] || 0;
@@ -249,6 +263,30 @@ export class DatabaseStorage implements IStorage {
   async cleanupExpiredCodes(): Promise<void> {
     await db.delete(verificationCodes)
       .where(eq(verificationCodes.expiresAt, new Date()));
+  }
+
+  async getAllSponsors(): Promise<Sponsor[]> {
+    return await db.select().from(sponsors).where(eq(sponsors.isActive, true)).orderBy(sponsors.name);
+  }
+
+  async createSponsor(sponsor: InsertSponsor): Promise<Sponsor> {
+    const [newSponsor] = await db.insert(sponsors).values(sponsor).returning();
+    return newSponsor;
+  }
+
+  async updateSponsor(id: string, updates: Partial<Sponsor>): Promise<Sponsor | undefined> {
+    const [updatedSponsor] = await db.update(sponsors)
+      .set(updates)
+      .where(eq(sponsors.id, id))
+      .returning();
+    return updatedSponsor || undefined;
+  }
+
+  async deleteSponsor(id: string): Promise<boolean> {
+    const result = await db.update(sponsors)
+      .set({ isActive: false })
+      .where(eq(sponsors.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

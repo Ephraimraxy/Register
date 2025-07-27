@@ -128,6 +128,24 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
+          {/* Sponsors Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Settings className="text-2xl text-orange-600" size={32} />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Sponsors</h3>
+                <p className="text-gray-600 mb-6">Manage training sponsors and funding organizations.</p>
+                <Link href="/sponsors">
+                  <Button className="w-full bg-orange-600 hover:bg-orange-700">
+                    Manage Sponsors
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Settings Card */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="pt-6">

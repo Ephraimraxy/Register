@@ -7,6 +7,7 @@ import HomePage from "@/pages/home";
 import RegistrationPage from "@/pages/registration";
 import TraineeRegistrationPage from "@/pages/trainee-registration";
 import ViewTraineesPage from "@/pages/view-trainees";
+import SponsorsPage from "@/pages/sponsors";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/registration" component={RegistrationPage} />
       <Route path="/registration/trainee" component={TraineeRegistrationPage} />
       <Route path="/trainees" component={ViewTraineesPage} />
+      <Route path="/sponsors" component={SponsorsPage} />
       <Route path="/login" component={LoginPage} />
       <Route component={NotFound} />
     </Switch>

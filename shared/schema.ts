@@ -28,6 +28,7 @@ export const trainees = pgTable("trainees", {
   gender: genderEnum("gender").notNull(),
   state: text("state").notNull(),
   lga: text("lga").notNull(),
+  sponsorId: varchar("sponsor_id").references(() => sponsors.id),
   roomNumber: text("room_number"),
   roomBlock: text("room_block"),
   verificationMethod: verificationMethodEnum("verification_method").notNull(),
@@ -53,6 +54,14 @@ export const verificationCodes = pgTable("verification_codes", {
   code: text("code").notNull(),
   isUsed: boolean("is_used").default(false),
   expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const sponsors = pgTable("sponsors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -82,6 +91,11 @@ export const insertVerificationCodeSchema = createInsertSchema(verificationCodes
   createdAt: true,
 });
 
+export const insertSponsorSchema = createInsertSchema(sponsors).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -105,4 +119,13 @@ export type StaffWithUser = Staff & {
 
 export type ResourcePersonWithUser = ResourcePerson & {
   user: User;
+};
+
+export type Sponsor = typeof sponsors.$inferSelect;
+export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
+
+// Extended types for API responses with sponsors
+export type TraineeWithUserAndSponsor = Trainee & {
+  user: User;
+  sponsor?: Sponsor | null;
 };

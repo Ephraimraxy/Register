@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { VerificationService } from "./services/verification";
 import { RoomAllocationService } from "./services/room-allocation";
 import { z } from "zod";
-import { insertUserSchema, insertTraineeSchema } from "@shared/schema";
+import { insertUserSchema, insertTraineeSchema, insertSponsorSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Trainee registration endpoint
@@ -21,7 +21,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: z.string().email(),
         phone: z.string().min(1),
         verificationMethod: z.enum(['email', 'phone']),
-        verificationCode: z.string().length(6)
+        verificationCode: z.string().length(6),
+        sponsorId: z.string().optional()
       }).parse(req.body);
 
       // Verify the code first
@@ -79,6 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gender: registrationData.gender,
         state: registrationData.state,
         lga: registrationData.lga,
+        sponsorId: registrationData.sponsorId || null,
         verificationMethod: registrationData.verificationMethod
       });
 
@@ -246,6 +248,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(resourcePersons);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch resource persons" });
+    }
+  });
+
+  // Sponsors endpoints
+  app.get("/api/sponsors", async (req, res) => {
+    try {
+      const sponsors = await storage.getAllSponsors();
+      res.json(sponsors);
+    } catch (error) {
+      console.error("Get sponsors error:", error);
+      res.status(500).json({ message: "Failed to fetch sponsors" });
+    }
+  });
+
+  app.post("/api/sponsors", async (req, res) => {
+    try {
+      const sponsorData = insertSponsorSchema.parse(req.body);
+      const sponsor = await storage.createSponsor(sponsorData);
+      res.json(sponsor);
+    } catch (error) {
+      console.error("Create sponsor error:", error);
+      res.status(500).json({ message: "Failed to create sponsor" });
+    }
+  });
+
+  app.patch("/api/sponsors/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const updatedSponsor = await storage.updateSponsor(id, updates);
+      
+      if (!updatedSponsor) {
+        return res.status(404).json({ message: "Sponsor not found" });
+      }
+      
+      res.json(updatedSponsor);
+    } catch (error) {
+      console.error("Update sponsor error:", error);
+      res.status(500).json({ message: "Failed to update sponsor" });
+    }
+  });
+
+  app.delete("/api/sponsors/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteSponsor(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Sponsor not found" });
+      }
+      
+      res.json({ message: "Sponsor deleted successfully" });
+    } catch (error) {
+      console.error("Delete sponsor error:", error);
+      res.status(500).json({ message: "Failed to delete sponsor" });
     }
   });
 
