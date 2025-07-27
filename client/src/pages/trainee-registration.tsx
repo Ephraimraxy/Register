@@ -330,7 +330,9 @@ export default function TraineeRegistrationPage() {
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
+                          <SelectValue placeholder="Select state">
+                            {field.value ? NIGERIAN_STATES.find(state => state.value === field.value)?.label : "Select state"}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -360,7 +362,9 @@ export default function TraineeRegistrationPage() {
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select LGA" />
+                          <SelectValue placeholder="Select LGA">
+                            {field.value || "Select LGA"}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
