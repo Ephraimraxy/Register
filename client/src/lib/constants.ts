@@ -1,0 +1,47 @@
+export const NIGERIAN_STATES = [
+  { value: "abia", label: "Abia" },
+  { value: "adamawa", label: "Adamawa" },
+  { value: "akwa-ibom", label: "Akwa Ibom" },
+  { value: "anambra", label: "Anambra" },
+  { value: "bauchi", label: "Bauchi" },
+  { value: "bayelsa", label: "Bayelsa" },
+  { value: "benue", label: "Benue" },
+  { value: "borno", label: "Borno" },
+  { value: "cross-river", label: "Cross River" },
+  { value: "delta", label: "Delta" },
+  { value: "ebonyi", label: "Ebonyi" },
+  { value: "edo", label: "Edo" },
+  { value: "ekiti", label: "Ekiti" },
+  { value: "enugu", label: "Enugu" },
+  { value: "gombe", label: "Gombe" },
+  { value: "imo", label: "Imo" },
+  { value: "jigawa", label: "Jigawa" },
+  { value: "kaduna", label: "Kaduna" },
+  { value: "kano", label: "Kano" },
+  { value: "katsina", label: "Katsina" },
+  { value: "kebbi", label: "Kebbi" },
+  { value: "kogi", label: "Kogi" },
+  { value: "kwara", label: "Kwara" },
+  { value: "lagos", label: "Lagos" },
+  { value: "nasarawa", label: "Nasarawa" },
+  { value: "niger", label: "Niger" },
+  { value: "ogun", label: "Ogun" },
+  { value: "ondo", label: "Ondo" },
+  { value: "osun", label: "Osun" },
+  { value: "oyo", label: "Oyo" },
+  { value: "plateau", label: "Plateau" },
+  { value: "rivers", label: "Rivers" },
+  { value: "sokoto", label: "Sokoto" },
+  { value: "taraba", label: "Taraba" },
+  { value: "yobe", label: "Yobe" },
+  { value: "zamfara", label: "Zamfara" },
+  { value: "fct", label: "FCT Abuja" }
+];
+
+export const STATES_LGAS: Record<string, string[]> = {
+  lagos: ['Agege', 'Ajeromi-Ifelodun', 'Alimosho', 'Amuwo-Odofin', 'Apapa', 'Badagry', 'Epe', 'Eti-Osa', 'Ibeju-Lekki', 'Ifako-Ijaiye', 'Ikeja', 'Ikorodu', 'Kosofe', 'Lagos Island', 'Lagos Mainland', 'Mushin', 'Ojo', 'Oshodi-Isolo', 'Shomolu', 'Surulere'],
+  fct: ['Abaji', 'Bwari', 'Gwagwalada', 'Kuje', 'Kwali', 'Municipal Area Council'],
+  kano: ['Ajingi', 'Albasu', 'Bagwai', 'Bebeji', 'Bichi', 'Bunkure', 'Dala', 'Dambatta', 'Dawakin Kudu', 'Dawakin Tofa', 'Doguwa', 'Fagge', 'Gabasawa', 'Garko', 'Garun Mallam', 'Gaya', 'Gezawa', 'Gwale', 'Gwarzo', 'Kabo', 'Kano Municipal', 'Karaye', 'Kibiya', 'Kiru', 'Kumbotso', 'Kunchi', 'Kura', 'Madobi', 'Makoda', 'Minjibir', 'Nasarawa', 'Rano', 'Rimin Gado', 'Rogo', 'Shanono', 'Sumaila', 'Takai', 'Tarauni', 'Tofa', 'Tsanyawa', 'Tudun Wada', 'Ungogo', 'Warawa', 'Wudil'],
+  // Add more states and their LGAs as needed
+  abia: ['Aba North', 'Aba South', 'Arochukwu', 'Bende', 'Ikwuano', 'Isiala Ngwa North', 'Isiala Ngwa South', 'Isuikwuato', 'Obi Ngwa', 'Ohafia', 'Osisioma', 'Ugwunagbo', 'Ukwa East', 'Ukwa West', 'Umuahia North', 'Umuahia South', 'Umu Nneochi']
+};
