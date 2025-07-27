@@ -17,8 +17,8 @@ import { getTrainees, type Trainee } from "@/lib/firebaseService";
 
 export default function ViewTraineesPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [genderFilter, setGenderFilter] = useState("");
-  const [stateFilter, setStateFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
 
   const { data: trainees = [], isLoading } = useQuery({
     queryKey: ['trainees'],
@@ -31,8 +31,8 @@ export default function ViewTraineesPage() {
       trainee.tagNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       trainee.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesGender = genderFilter === "" || trainee.gender === genderFilter;
-    const matchesState = stateFilter === "" || trainee.state === stateFilter;
+    const matchesGender = genderFilter === "" || genderFilter === "all" || trainee.gender === genderFilter;
+    const matchesState = stateFilter === "" || stateFilter === "all" || trainee.state === stateFilter;
     
     return matchesSearch && matchesGender && matchesState;
   });
@@ -41,7 +41,7 @@ export default function ViewTraineesPage() {
     const headers = ['Tag Number', 'Name', 'Email', 'Phone', 'Gender', 'State', 'LGA', 'Room'];
     const csvContent = [
       headers.join(','),
-      ...filteredTrainees.map(trainee => [
+      ...filteredTrainees.map((trainee, index) => [
         trainee.tagNumber,
         `${trainee.firstName} ${trainee.surname}`,
         trainee.email,
@@ -121,7 +121,7 @@ export default function ViewTraineesPage() {
                   <SelectValue placeholder="Filter by gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Genders</SelectItem>
+                  <SelectItem value="all">All Genders</SelectItem>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                 </SelectContent>
@@ -132,7 +132,7 @@ export default function ViewTraineesPage() {
                   <SelectValue placeholder="Filter by state" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All States</SelectItem>
+                  <SelectItem value="all">All States</SelectItem>
                   {Array.from(new Set(trainees.map(t => t.state))).map(state => (
                     <SelectItem key={state} value={state}>{state}</SelectItem>
                   ))}
@@ -143,8 +143,8 @@ export default function ViewTraineesPage() {
                 variant="outline"
                 onClick={() => {
                   setSearchTerm("");
-                  setGenderFilter("");
-                  setStateFilter("");
+                  setGenderFilter("all");
+                  setStateFilter("all");
                 }}
               >
                 Clear Filters
