@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 ✓ Fixed state selection dropdown in trainee registration form
 ✓ Updated registration API to use backend endpoints instead of Firebase
 ✓ Fixed form field value handling for proper state/LGA selection
+✓ Updated constants.ts with comprehensive Nigerian states and LGAs data
 ✓ Application running properly on port 5000
 
 ## System Architecture
