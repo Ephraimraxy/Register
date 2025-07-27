@@ -75,7 +75,13 @@ export default function TraineeRegistrationPage() {
   });
 
   const selectedState = form.watch("state");
+  const selectedLGA = form.watch("lga");
   const availableLGAs = selectedState ? STATES_LGAS[selectedState] || [] : [];
+  
+  // Debug logging
+  console.log("Selected State:", selectedState);
+  console.log("Selected LGA:", selectedLGA);
+  console.log("Available LGAs:", availableLGAs.length);
 
   // Step validation functions
   const validateStep1 = () => {
@@ -320,7 +326,7 @@ export default function TraineeRegistrationPage() {
                         // Reset LGA when state changes
                         form.setValue("lga", "");
                       }} 
-                      value={field.value}
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -347,8 +353,9 @@ export default function TraineeRegistrationPage() {
                   <FormItem>
                     <FormLabel>Local Government Area</FormLabel>
                     <Select
+                      key={selectedState} // Force re-render when state changes
                       onValueChange={field.onChange}
-                      value={field.value}
+                      value={field.value || ""}
                       disabled={!selectedState}
                     >
                       <FormControl>
