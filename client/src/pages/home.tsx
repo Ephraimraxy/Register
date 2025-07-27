@@ -25,7 +25,12 @@ export default function HomePage() {
             <div className="flex items-center space-x-4">
               <Link href="/login">
                 <Button variant="ghost" className="text-gray-600 hover:text-gray-900 font-medium">
-                  <i className="fas fa-sign-in-alt mr-2"></i>Login
+                  Login
+                </Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Dashboard
                 </Button>
               </Link>
             </div>

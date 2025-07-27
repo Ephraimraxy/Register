@@ -1,61 +1,158 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowLeft, Plus, Edit, Trash2, Search, Settings, Calendar } from "lucide-react";
+import { ArrowLeft, Building, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-
-const sponsorSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  batchId: z.string().optional(),
-});
-
-const batchSchema = z.object({
-  name: z.string().min(1, "Batch name is required"),
-  year: z.number().min(2020, "Year must be at least 2020"),
-  description: z.string().optional(),
-});
-
-type SponsorFormData = z.infer<typeof sponsorSchema>;
-type BatchFormData = z.infer<typeof batchSchema>;
-
-interface Batch {
-  id: string;
-  name: string;
-  year: number;
-  isActive: boolean;
-  description?: string | null;
-  createdAt: string;
-}
-
-interface Sponsor {
-  id: string;
-  name: string;
-  description?: string | null;
-  isActive: boolean;
-  batchId?: string | null;
-  batch?: Batch | null;
-  createdAt: string;
-}
+import { Badge } from "@/components/ui/badge";
+import { getSponsors, type Sponsor } from "@/lib/firebaseService";
 
 export default function SponsorsPage() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
-  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+
+  const { data: sponsors = [], isLoading } = useQuery({
+    queryKey: ['sponsors'],
+    queryFn: getSponsors,
+  });
+
+  const filteredSponsors = sponsors.filter(sponsor =>
+    sponsor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (sponsor.description && sponsor.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading sponsors...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Link href="/">
+                  <Button variant="outline" size="sm">
+                    <ArrowLeft className="mr-2" size={16} />
+                    Back to Home
+                  </Button>
+                </Link>
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Building className="mr-2 text-blue-600" size={24} />
+                    Sponsors Management
+                  </CardTitle>
+                  <CardDescription>
+                    View and manage training sponsors ({filteredSponsors.length} total)
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Search */}
+            <div className="flex items-center space-x-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search sponsors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Sponsors Table */}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSponsors.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8">
+                        <div className="text-gray-500">
+                          <Building className="mx-auto h-12 w-12 mb-4 opacity-20" />
+                          {sponsors.length === 0 ? "No sponsors registered yet" : "No sponsors match your search"}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSponsors.map((sponsor) => (
+                      <TableRow key={sponsor.id}>
+                        <TableCell className="font-medium">
+                          {sponsor.name}
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs truncate">
+                            {sponsor.description || "No description"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={sponsor.isActive ? "default" : "secondary"}>
+                            {sponsor.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {new Date(sponsor.createdAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredSponsors.length}
+                  </div>
+                  <p className="text-sm text-gray-600">Total Sponsors</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredSponsors.filter(s => s.isActive).length}
+                  </div>
+                  <p className="text-sm text-gray-600">Active Sponsors</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-gray-600">
+                    {filteredSponsors.filter(s => !s.isActive).length}
+                  </div>
+                  <p className="text-sm text-gray-600">Inactive Sponsors</p>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
 
   const form = useForm<SponsorFormData>({
