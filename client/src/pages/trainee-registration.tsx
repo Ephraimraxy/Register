@@ -91,6 +91,65 @@ export default function TraineeRegistrationPage() {
   const selectedState = form.watch("state");
   const availableLGAs = selectedState ? STATES_LGAS[selectedState] || [] : [];
 
+  // Step validation functions
+  const validateStep1 = () => {
+    const fields = ["firstName", "surname", "dateOfBirth", "gender"] as const;
+    const isValid = fields.every(field => {
+      const value = form.getValues(field);
+      return value && value.toString().trim() !== "";
+    });
+    return isValid;
+  };
+
+  const validateStep2 = () => {
+    const fields = ["state", "lga", "email", "phone"] as const;
+    const isValid = fields.every(field => {
+      const value = form.getValues(field);
+      return value && value.toString().trim() !== "";
+    });
+    
+    if (!isValid) return false;
+
+    // Validate email format
+    const email = form.getValues("email");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return false;
+
+    // Validate phone format
+    const phone = form.getValues("phone");
+    const phoneRegex = /^(\+234|0)[789][01]\d{8}$/;
+    if (!phoneRegex.test(phone)) return false;
+
+    return true;
+  };
+
+  // Navigation handlers
+  const handleNext = () => {
+    if (currentStep === 1 && !validateStep1()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields in Step 1",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (currentStep === 2 && !validateStep2()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields correctly in Step 2",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
   const onSubmit = async (data: TraineeRegistrationData) => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
@@ -537,29 +596,31 @@ export default function TraineeRegistrationPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={goBack}
+                    onClick={currentStep === 1 ? goBack : handlePrevious}
                     className="flex items-center"
                   >
                     <ArrowLeft className="mr-2" size={16} />
                     {currentStep === 1 ? "Back to Options" : "Previous"}
                   </Button>
 
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex items-center bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isLoading ? (
-                      "Processing..."
-                    ) : currentStep === 3 ? (
-                      "Complete Registration"
-                    ) : (
-                      <>
-                        Next
-                        <ArrowRight className="ml-2" size={16} />
-                      </>
-                    )}
-                  </Button>
+                  {currentStep === 3 ? (
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex items-center bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isLoading ? "Processing..." : "Complete Registration"}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleNext}
+                      className="flex items-center bg-blue-600 hover:bg-blue-700"
+                    >
+                      Next
+                      <ArrowRight className="ml-2" size={16} />
+                    </Button>
+                  )}
                 </div>
               </form>
             </Form>
