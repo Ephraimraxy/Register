@@ -163,6 +163,7 @@ export default function ViewTraineesPage() {
                       <TableHead>Gender</TableHead>
                       <TableHead>Room</TableHead>
                       <TableHead>Sponsor</TableHead>
+                      <TableHead>Batch</TableHead>
                       <TableHead>State</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
@@ -183,6 +184,9 @@ export default function ViewTraineesPage() {
                         <TableCell>{formatRoomAssignment(trainee)}</TableCell>
                         <TableCell>
                           {trainee.sponsor ? trainee.sponsor.name : "Self Sponsored"}
+                        </TableCell>
+                        <TableCell>
+                          {trainee.batch ? `${trainee.batch.name} ${trainee.batch.year}` : "No Batch"}
                         </TableCell>
                         <TableCell className="capitalize">{trainee.state}</TableCell>
                         <TableCell>{trainee.user.email}</TableCell>

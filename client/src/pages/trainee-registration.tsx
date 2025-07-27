@@ -29,6 +29,7 @@ const registrationSchema = z.object({
   verificationMethod: z.enum(["email", "phone"], { required_error: "Verification method is required" }),
   verificationCode: z.string().length(6, "Verification code must be 6 characters"),
   sponsorId: z.string().optional(),
+  batchId: z.string().optional(),
 });
 
 const steps = [
@@ -66,15 +67,27 @@ export default function TraineeRegistrationPage() {
   const selectedMethod = form.watch("verificationMethod");
   const verificationCode = form.watch("verificationCode");
 
-  // Fetch sponsors for selection
+  // Fetch sponsors for active batch
   const { data: sponsors = [] } = useQuery({
-    queryKey: ["/api/sponsors"],
+    queryKey: ["/api/sponsors/active-batch"],
     queryFn: async () => {
-      const response = await fetch("/api/sponsors");
+      const response = await fetch("/api/sponsors/active-batch");
       if (!response.ok) {
         throw new Error("Failed to fetch sponsors");
       }
       return response.json() as Promise<Sponsor[]>;
+    },
+  });
+
+  // Fetch active batch
+  const { data: activeBatch } = useQuery({
+    queryKey: ["/api/batches/active"],
+    queryFn: async () => {
+      const response = await fetch("/api/batches/active");
+      if (!response.ok) {
+        throw new Error("Failed to fetch active batch");
+      }
+      return response.json() as Promise<{ id: string; name: string; year: number } | null>;
     },
   });
 
@@ -472,7 +485,7 @@ export default function TraineeRegistrationPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Self Sponsored</SelectItem>
+                                <SelectItem value="self-sponsored">Self Sponsored</SelectItem>
                                 {sponsors.map((sponsor: Sponsor) => (
                                   <SelectItem key={sponsor.id} value={sponsor.id}>
                                     {sponsor.name}

@@ -5,6 +5,7 @@ import {
   resourcePersons, 
   verificationCodes,
   sponsors,
+  batches,
   type User, 
   type InsertUser,
   type Trainee,
@@ -20,7 +21,10 @@ import {
   type VerificationCode,
   type InsertVerificationCode,
   type Sponsor,
-  type InsertSponsor
+  type InsertSponsor,
+  type SponsorWithBatch,
+  type Batch,
+  type InsertBatch
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc } from "drizzle-orm";
@@ -58,10 +62,20 @@ export interface IStorage {
   cleanupExpiredCodes(): Promise<void>;
 
   // Sponsor methods
-  getAllSponsors(): Promise<Sponsor[]>;
+  getAllSponsors(): Promise<SponsorWithBatch[]>;
   createSponsor(sponsor: InsertSponsor): Promise<Sponsor>;
   updateSponsor(id: string, updates: Partial<Sponsor>): Promise<Sponsor | undefined>;
   deleteSponsor(id: string): Promise<boolean>;
+  getSponsorsForActiveBatch(): Promise<SponsorWithBatch[]>;
+
+  // Batch methods
+  getAllBatches(): Promise<Batch[]>;
+  getBatch(id: string): Promise<Batch | undefined>;
+  createBatch(batch: InsertBatch): Promise<Batch>;
+  updateBatch(id: string, updates: Partial<Batch>): Promise<Batch | undefined>;
+  deleteBatch(id: string): Promise<boolean>;
+  getActiveBatch(): Promise<Batch | undefined>;
+  setActiveBatch(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -265,8 +279,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(verificationCodes.expiresAt, new Date()));
   }
 
-  async getAllSponsors(): Promise<Sponsor[]> {
-    return await db.select().from(sponsors).where(eq(sponsors.isActive, true)).orderBy(sponsors.name);
+  async getAllSponsors(): Promise<SponsorWithBatch[]> {
+    const results = await db.select()
+      .from(sponsors)
+      .leftJoin(batches, eq(sponsors.batchId, batches.id))
+      .where(eq(sponsors.isActive, true))
+      .orderBy(sponsors.name);
+    
+    return results.map(result => ({
+      ...result.sponsors,
+      batch: result.batches || null
+    }));
   }
 
   async createSponsor(sponsor: InsertSponsor): Promise<Sponsor> {
@@ -286,6 +309,67 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(sponsors)
       .set({ isActive: false })
       .where(eq(sponsors.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getSponsorsForActiveBatch(): Promise<SponsorWithBatch[]> {
+    const results = await db.select()
+      .from(sponsors)
+      .leftJoin(batches, eq(sponsors.batchId, batches.id))
+      .where(and(
+        eq(sponsors.isActive, true),
+        eq(batches.isActive, true)
+      ))
+      .orderBy(sponsors.name);
+    
+    return results.map(result => ({
+      ...result.sponsors,
+      batch: result.batches || null
+    }));
+  }
+
+  // Batch methods
+  async getAllBatches(): Promise<Batch[]> {
+    return await db.select().from(batches).orderBy(batches.name);
+  }
+
+  async getBatch(id: string): Promise<Batch | undefined> {
+    const [batch] = await db.select().from(batches).where(eq(batches.id, id));
+    return batch || undefined;
+  }
+
+  async createBatch(batch: InsertBatch): Promise<Batch> {
+    const [newBatch] = await db.insert(batches).values(batch).returning();
+    return newBatch;
+  }
+
+  async updateBatch(id: string, updates: Partial<Batch>): Promise<Batch | undefined> {
+    const [updatedBatch] = await db.update(batches)
+      .set(updates)
+      .where(eq(batches.id, id))
+      .returning();
+    return updatedBatch || undefined;
+  }
+
+  async deleteBatch(id: string): Promise<boolean> {
+    const result = await db.delete(batches).where(eq(batches.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getActiveBatch(): Promise<Batch | undefined> {
+    const [batch] = await db.select().from(batches).where(eq(batches.isActive, true));
+    return batch || undefined;
+  }
+
+  async setActiveBatch(id: string): Promise<boolean> {
+    // First, deactivate all batches
+    await db.update(batches).set({ isActive: false });
+    
+    // Then activate the specified batch
+    const result = await db.update(batches)
+      .set({ isActive: true })
+      .where(eq(batches.id, id));
+    
     return (result.rowCount ?? 0) > 0;
   }
 }

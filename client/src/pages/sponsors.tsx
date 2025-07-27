@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { ArrowLeft, Plus, Edit, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, Search, Settings, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,15 +18,34 @@ import { apiRequest } from "@/lib/queryClient";
 const sponsorSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
+  batchId: z.string().optional(),
+});
+
+const batchSchema = z.object({
+  name: z.string().min(1, "Batch name is required"),
+  year: z.number().min(2020, "Year must be at least 2020"),
+  description: z.string().optional(),
 });
 
 type SponsorFormData = z.infer<typeof sponsorSchema>;
+type BatchFormData = z.infer<typeof batchSchema>;
+
+interface Batch {
+  id: string;
+  name: string;
+  year: number;
+  isActive: boolean;
+  description?: string | null;
+  createdAt: string;
+}
 
 interface Sponsor {
   id: string;
   name: string;
   description?: string | null;
   isActive: boolean;
+  batchId?: string | null;
+  batch?: Batch | null;
   createdAt: string;
 }
 
@@ -36,11 +55,23 @@ export default function SponsorsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
 
   const form = useForm<SponsorFormData>({
     resolver: zodResolver(sponsorSchema),
     defaultValues: {
       name: "",
+      description: "",
+      batchId: "",
+    },
+  });
+
+  const batchForm = useForm<BatchFormData>({
+    resolver: zodResolver(batchSchema),
+    defaultValues: {
+      name: "",
+      year: new Date().getFullYear(),
       description: "",
     },
   });
@@ -53,6 +84,28 @@ export default function SponsorsPage() {
         throw new Error("Failed to fetch sponsors");
       }
       return response.json() as Promise<Sponsor[]>;
+    },
+  });
+
+  const { data: batches = [] } = useQuery({
+    queryKey: ["/api/batches"],
+    queryFn: async () => {
+      const response = await fetch("/api/batches");
+      if (!response.ok) {
+        throw new Error("Failed to fetch batches");
+      }
+      return response.json() as Promise<Batch[]>;
+    },
+  });
+
+  const { data: activeBatch } = useQuery({
+    queryKey: ["/api/batches/active"],
+    queryFn: async () => {
+      const response = await fetch("/api/batches/active");
+      if (!response.ok) {
+        throw new Error("Failed to fetch active batch");
+      }
+      return response.json() as Promise<Batch | null>;
     },
   });
 
@@ -119,6 +172,51 @@ export default function SponsorsPage() {
       toast({
         title: "Error", 
         description: "Failed to delete sponsor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createBatchMutation = useMutation({
+    mutationFn: async (data: BatchFormData) => {
+      const response = await apiRequest("POST", "/api/batches", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
+      toast({
+        title: "Success",
+        description: "Batch created successfully",
+      });
+      setIsBatchDialogOpen(false);
+      batchForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create batch",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const activateBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/batches/${id}/activate`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/batches/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/batches"] });
+      toast({
+        title: "Success",
+        description: "Batch activated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to activate batch",
         variant: "destructive",
       });
     },
@@ -240,6 +338,108 @@ export default function SponsorsPage() {
                     Back to Home
                   </Button>
                 </Link>
+              </div>
+            </div>
+
+            {/* Current Batch Status */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold text-blue-900">Current Registration Batch</h3>
+                  <p className="text-blue-700">
+                    {activeBatch ? `${activeBatch.name} ${activeBatch.year}` : "No active batch set"}
+                  </p>
+                </div>
+                <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Settings className="mr-2" size={16} />
+                      Manage Batches
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                      <DialogTitle>Batch Management</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                      {/* Create New Batch Form */}
+                      <div className="border rounded-lg p-4">
+                        <h4 className="font-semibold mb-3">Create New Batch</h4>
+                        <Form {...batchForm}>
+                          <form onSubmit={batchForm.handleSubmit((data) => createBatchMutation.mutate(data))} className="flex gap-3">
+                            <FormField
+                              control={batchForm.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormControl>
+                                    <Input {...field} placeholder="Batch name (e.g., Batch A)" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={batchForm.control}
+                              name="year"
+                              render={({ field }) => (
+                                <FormItem className="w-24">
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                      placeholder="2025" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button 
+                              type="submit" 
+                              disabled={createBatchMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Plus size={16} />
+                            </Button>
+                          </form>
+                        </Form>
+                      </div>
+
+                      {/* Existing Batches */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Existing Batches</h4>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {batches.map((batch) => (
+                            <div key={batch.id} className={`flex justify-between items-center p-3 border rounded-lg ${batch.isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                              <div className="flex items-center space-x-3">
+                                <Calendar size={16} className={batch.isActive ? 'text-green-600' : 'text-gray-400'} />
+                                <div>
+                                  <span className="font-medium">{batch.name} {batch.year}</span>
+                                  {batch.isActive && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>}
+                                </div>
+                              </div>
+                              {!batch.isActive && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => activateBatchMutation.mutate(batch.id)}
+                                  disabled={activateBatchMutation.isPending}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  Set Active
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          {batches.length === 0 && (
+                            <p className="text-gray-500 text-center py-4">No batches created yet</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 

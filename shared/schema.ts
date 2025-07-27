@@ -29,6 +29,7 @@ export const trainees = pgTable("trainees", {
   state: text("state").notNull(),
   lga: text("lga").notNull(),
   sponsorId: varchar("sponsor_id").references(() => sponsors.id),
+  batchId: varchar("batch_id").references(() => batches.id),
   roomNumber: text("room_number"),
   roomBlock: text("room_block"),
   verificationMethod: verificationMethodEnum("verification_method").notNull(),
@@ -57,11 +58,21 @@ export const verificationCodes = pgTable("verification_codes", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const batches = pgTable("batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  year: integer("year").notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const sponsors = pgTable("sponsors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   description: text("description"),
   isActive: boolean("is_active").default(true),
+  batchId: varchar("batch_id").references(() => batches.id),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -96,6 +107,11 @@ export const insertSponsorSchema = createInsertSchema(sponsors).omit({
   createdAt: true,
 });
 
+export const insertBatchSchema = createInsertSchema(batches).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -123,9 +139,16 @@ export type ResourcePersonWithUser = ResourcePerson & {
 
 export type Sponsor = typeof sponsors.$inferSelect;
 export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
+export type Batch = typeof batches.$inferSelect;
+export type InsertBatch = z.infer<typeof insertBatchSchema>;
 
 // Extended types for API responses with sponsors
 export type TraineeWithUserAndSponsor = Trainee & {
   user: User;
   sponsor?: Sponsor | null;
+  batch?: Batch | null;
+};
+
+export type SponsorWithBatch = Sponsor & {
+  batch?: Batch | null;
 };

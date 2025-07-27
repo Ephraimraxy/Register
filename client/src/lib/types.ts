@@ -22,6 +22,7 @@ export interface TraineeWithUser {
   state: string;
   lga: string;
   sponsorId?: string | null;
+  batchId?: string | null;
   roomNumber: string | null;
   roomBlock: string | null;
   verificationMethod: 'email' | 'phone';
@@ -34,6 +35,12 @@ export interface TraineeWithUser {
     phone: string;
   };
   sponsor?: Sponsor | null;
+  batch?: {
+    id: string;
+    name: string;
+    year: number;
+    isActive: boolean;
+  } | null;
 }
 
 export interface ApiResponse<T = any> {

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { VerificationService } from "./services/verification";
 import { RoomAllocationService } from "./services/room-allocation";
 import { z } from "zod";
-import { insertUserSchema, insertTraineeSchema, insertSponsorSchema } from "@shared/schema";
+import { insertUserSchema, insertTraineeSchema, insertSponsorSchema, insertBatchSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Trainee registration endpoint
@@ -22,7 +22,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: z.string().min(1),
         verificationMethod: z.enum(['email', 'phone']),
         verificationCode: z.string().length(6),
-        sponsorId: z.string().optional()
+        sponsorId: z.string().optional(),
+        batchId: z.string().optional()
       }).parse(req.body);
 
       // Verify the code first
@@ -73,6 +74,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.createUser(userData);
 
+      // Handle sponsor ID - convert "self-sponsored" to null
+      const sponsorId = registrationData.sponsorId === "self-sponsored" ? null : registrationData.sponsorId;
+      
+      // Get active batch if batch not specified
+      let batchId = registrationData.batchId;
+      if (!batchId) {
+        const activeBatch = await storage.getActiveBatch();
+        batchId = activeBatch?.id;
+      }
+
       // Create trainee
       const traineeData = insertTraineeSchema.parse({
         userId: user.id,
@@ -80,7 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gender: registrationData.gender,
         state: registrationData.state,
         lga: registrationData.lga,
-        sponsorId: registrationData.sponsorId || null,
+        sponsorId: sponsorId,
+        batchId: batchId,
         verificationMethod: registrationData.verificationMethod
       });
 
@@ -305,6 +317,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete sponsor error:", error);
       res.status(500).json({ message: "Failed to delete sponsor" });
+    }
+  });
+
+  app.get("/api/sponsors/active-batch", async (req, res) => {
+    try {
+      const sponsors = await storage.getSponsorsForActiveBatch();
+      res.json(sponsors);
+    } catch (error) {
+      console.error("Get active batch sponsors error:", error);
+      res.status(500).json({ message: "Failed to fetch sponsors for active batch" });
+    }
+  });
+
+  // Batch endpoints
+  app.get("/api/batches", async (req, res) => {
+    try {
+      const batches = await storage.getAllBatches();
+      res.json(batches);
+    } catch (error) {
+      console.error("Get batches error:", error);
+      res.status(500).json({ message: "Failed to fetch batches" });
+    }
+  });
+
+  app.post("/api/batches", async (req, res) => {
+    try {
+      const batchData = insertBatchSchema.parse(req.body);
+      const batch = await storage.createBatch(batchData);
+      res.json(batch);
+    } catch (error) {
+      console.error("Create batch error:", error);
+      res.status(500).json({ message: "Failed to create batch" });
+    }
+  });
+
+  app.patch("/api/batches/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const updatedBatch = await storage.updateBatch(id, updates);
+      
+      if (!updatedBatch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      res.json(updatedBatch);
+    } catch (error) {
+      console.error("Update batch error:", error);
+      res.status(500).json({ message: "Failed to update batch" });
+    }
+  });
+
+  app.delete("/api/batches/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const deleted = await storage.deleteBatch(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      res.json({ message: "Batch deleted successfully" });
+    } catch (error) {
+      console.error("Delete batch error:", error);
+      res.status(500).json({ message: "Failed to delete batch" });
+    }
+  });
+
+  app.get("/api/batches/active", async (req, res) => {
+    try {
+      const batch = await storage.getActiveBatch();
+      res.json(batch);
+    } catch (error) {
+      console.error("Get active batch error:", error);
+      res.status(500).json({ message: "Failed to fetch active batch" });
+    }
+  });
+
+  app.post("/api/batches/:id/activate", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const activated = await storage.setActiveBatch(id);
+      
+      if (!activated) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+      
+      res.json({ message: "Batch activated successfully" });
+    } catch (error) {
+      console.error("Activate batch error:", error);
+      res.status(500).json({ message: "Failed to activate batch" });
     }
   });
 
