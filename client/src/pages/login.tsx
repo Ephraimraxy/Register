@@ -121,6 +121,12 @@ export default function LoginPage() {
 
             <div className="text-center mt-6">
               <p className="text-gray-600">
+                Prefer verification code?{" "}
+                <Link href="/verification-login" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Login with verification
+                </Link>
+              </p>
+              <p className="text-gray-600 mt-2">
                 Need to register a new account?{" "}
                 <Link href="/registration" className="text-blue-600 hover:text-blue-700 font-medium">
                   Go to Registration
@@ -129,13 +135,6 @@ export default function LoginPage() {
               <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm mt-2 block">
                 ← Back to Home
               </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
             </div>
           </CardContent>
         </Card>

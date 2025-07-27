@@ -8,6 +8,7 @@ import HomePage from "@/pages/home";
 import RegistrationPage from "@/pages/registration";
 import TraineeRegistrationPage from "@/pages/trainee-registration";
 import ViewTraineesPage from "@/pages/view-trainees-new";
+import VerificationLoginPage from "@/pages/verification-login";
 import SponsorsPage from "@/pages/sponsors";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/trainees" component={ViewTraineesPage} />
       <Route path="/sponsors" component={SponsorsPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/verification-login" component={VerificationLoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route component={NotFound} />
     </Switch>

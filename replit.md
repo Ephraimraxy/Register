@@ -36,9 +36,10 @@ The system uses PostgreSQL with the following key entities:
 ## Key Components
 
 ### Authentication & Verification
-- Code-based verification system (email/SMS)
-- Multi-role user registration (trainee, staff, resource person)
-- Session-based authentication with PostgreSQL storage
+- **Firebase Authentication**: Email/password and verification code login
+- **Email/SMS Verification**: Professional code-based authentication system
+- **Multi-authentication Options**: Traditional password login or verification code login
+- **Role-based Access**: Trainee, staff, and resource person registration
 
 ### Room Allocation System
 - Automatic room assignment based on gender
@@ -78,10 +79,11 @@ The system uses PostgreSQL with the following key entities:
 - **Linting**: ESLint configuration
 - **Styling**: PostCSS with Tailwind CSS
 
-### Future Integrations
-- Email service (Nodemailer or similar) for verification codes
-- SMS service for phone verification
-- File upload for document management
+### Current Integrations
+- **Firebase Authentication**: Complete email/phone verification system
+- **Firebase Firestore**: Real-time data storage and management
+- **Firebase Analytics**: Application usage tracking
+- **Email/SMS Verification**: Code-based authentication for enhanced security
 
 ## Deployment Strategy
 
