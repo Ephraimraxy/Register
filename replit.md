@@ -8,6 +8,15 @@ This is a comprehensive training management system built with React, TypeScript,
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**July 27, 2025 - Migration Completed:**
+✓ Successfully migrated from Replit Agent to Replit environment
+✓ Created PostgreSQL database and migrated all schema tables
+✓ Fixed state selection dropdown in trainee registration form
+✓ Updated registration API to use backend endpoints instead of Firebase
+✓ Application running properly on port 5000
+
 ## System Architecture
 
 ### Frontend Architecture

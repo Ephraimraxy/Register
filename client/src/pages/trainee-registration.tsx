@@ -13,19 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  createTrainee, 
-  createUser, 
-  getActiveSponsors, 
-  getActiveBatches, 
-  generateTagNumber, 
-  allocateRoom,
-  type Trainee,
-  type BaseUser,
-  type Sponsor,
-  type Batch
-} from "@/lib/firebaseService";
-import { signUpWithEmail } from "@/lib/firebaseAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { NIGERIAN_STATES, STATES_LGAS } from "@/lib/constants";
 
 const registrationSchema = z.object({
@@ -79,13 +67,11 @@ export default function TraineeRegistrationPage() {
 
   // Fetch sponsors and batches
   const { data: sponsors = [] } = useQuery({
-    queryKey: ['/api/sponsors'],
-    queryFn: getActiveSponsors,
+    queryKey: ['/api/sponsors', 'active-batch'],
   });
 
   const { data: batches = [] } = useQuery({
     queryKey: ['/api/batches'],
-    queryFn: getActiveBatches,
   });
 
   const selectedState = form.watch("state");
@@ -158,48 +144,47 @@ export default function TraineeRegistrationPage() {
 
     setIsLoading(true);
     try {
-      // Create Firebase auth user
-      const user = await signUpWithEmail(data.email, data.password, `${data.firstName} ${data.surname}`);
+      // First, send verification code
+      const verificationResponse = await apiRequest("POST", "/api/verification/send", {
+        identifier: data.verificationMethod === "email" ? data.email : data.phone,
+        method: data.verificationMethod
+      });
       
-      // Generate tag number and allocate room
-      const tagNumber = await generateTagNumber();
-      const roomAllocation = await allocateRoom(data.gender);
+      const verificationResult = await verificationResponse.json();
       
-      // Create user record in Firestore
-      const baseUserData: Omit<BaseUser, 'id' | 'createdAt'> = {
+      if (!verificationResult.success) {
+        throw new Error(verificationResult.message);
+      }
+
+      // For development, automatically use the returned code
+      const verificationCode = verificationResult.code;
+      
+      // Register trainee with backend API
+      const registrationResponse = await apiRequest("POST", "/api/trainees/register", {
         firstName: data.firstName,
         surname: data.surname,
         middleName: data.middleName,
-        email: data.email,
-        phone: data.phone,
-        role: "trainee",
-        isVerified: true, // Since we're using Firebase Auth
-      };
-      
-      const userId = await createUser(baseUserData);
-      
-      // Create trainee record
-      const traineeData: Omit<Trainee, 'id' | 'createdAt'> = {
-        ...baseUserData,
-        role: "trainee",
-        tagNumber,
         dateOfBirth: data.dateOfBirth,
         gender: data.gender,
         state: data.state,
         lga: data.lga,
-        sponsorId: data.sponsorId || undefined,
-        batchId: data.batchId || undefined,
-        roomNumber: roomAllocation?.roomNumber || undefined,
-        roomBlock: roomAllocation?.roomBlock || undefined,
+        email: data.email,
+        phone: data.phone,
         verificationMethod: data.verificationMethod,
-      };
+        verificationCode: verificationCode,
+        sponsorId: data.sponsorId || undefined,
+        batchId: data.batchId || undefined
+      });
       
-      await createTrainee(traineeData);
+      const result = await registrationResponse.json();
       
       toast({
         title: "Registration Successful!",
-        description: `Welcome ${data.firstName}! Your tag number is ${tagNumber}. ${roomAllocation ? `Room: ${roomAllocation.roomBlock}-${roomAllocation.roomNumber}` : 'Room allocation pending.'}`,
+        description: `Welcome ${data.firstName}! Your tag number is ${result.trainee.tagNumber}. ${result.trainee.roomBlock ? `Room: ${result.trainee.roomBlock} ${result.trainee.roomNumber}` : 'Room allocation pending.'}`,
       });
+      
+      // Invalidate and refetch trainees list
+      queryClient.invalidateQueries({ queryKey: ['/api/trainees'] });
       
       // Redirect to dashboard
       setLocation("/dashboard");
@@ -329,7 +314,14 @@ export default function TraineeRegistrationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>State</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Reset LGA when state changes
+                        form.setValue("lga", "");
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select state" />
