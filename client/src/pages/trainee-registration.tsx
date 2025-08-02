@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { NIGERIAN_STATES, STATES_LGAS } from "@/lib/constants";
+import { signUpWithEmail } from "@/lib/firebaseAuth";
+import { createTrainee, allocateTagNumber, allocateRoomWithBedSpace, getSponsors, getBatches } from "@/lib/firebaseService";
 
 const registrationSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -67,21 +68,22 @@ export default function TraineeRegistrationPage() {
 
   // Fetch sponsors and batches
   const { data: sponsors = [] } = useQuery<any[]>({
-    queryKey: ['/api/sponsors', 'active-batch'],
+    queryKey: ['sponsors'],
+    queryFn: getSponsors,
   });
 
   const { data: batches = [] } = useQuery<any[]>({
-    queryKey: ['/api/batches'],
+    queryKey: ['batches'],
+    queryFn: getBatches,
   });
 
-  const selectedState = form.watch("state");
-  const selectedLGA = form.watch("lga");
-  const availableLGAs = selectedState ? STATES_LGAS[selectedState] || [] : [];
-  
-  // Debug logging
-  console.log("Selected State:", selectedState);
-  console.log("Selected LGA:", selectedLGA);
-  console.log("Available LGAs:", availableLGAs.length);
+  // Clear email and phone fields when entering Step 2
+  useEffect(() => {
+    if (currentStep === 2) {
+      form.setValue("email", "");
+      form.setValue("phone", "");
+    }
+  }, [currentStep, form]);
 
   // Step validation functions
   const validateStep1 = () => {
@@ -94,7 +96,7 @@ export default function TraineeRegistrationPage() {
   };
 
   const validateStep2 = () => {
-    const fields = ["state", "lga", "email", "phone"] as const;
+    const fields = ["email", "phone", "state", "lga"] as const;
     const isValid = fields.every(field => {
       const value = form.getValues(field);
       return value && value.toString().trim() !== "";
@@ -150,23 +152,15 @@ export default function TraineeRegistrationPage() {
 
     setIsLoading(true);
     try {
-      // First, send verification code
-      const verificationResponse = await apiRequest("POST", "/api/verification/send", {
-        identifier: data.verificationMethod === "email" ? data.email : data.phone,
-        method: data.verificationMethod
-      });
-      
-      const verificationResult = await verificationResponse.json();
-      
-      if (!verificationResult.success) {
-        throw new Error(verificationResult.message);
-      }
+      // Register user with Firebase Auth
+      const userCredential = await signUpWithEmail(data.email, data.password, data.firstName + ' ' + data.surname);
 
-      // For development, automatically use the returned code
-      const verificationCode = verificationResult.code;
-      
-      // Register trainee with backend API
-      const registrationResponse = await apiRequest("POST", "/api/trainees/register", {
+      // Try to allocate tag number and room
+      const tagNumber = await allocateTagNumber();
+      const room = await allocateRoomWithBedSpace(data.gender);
+
+      // Create trainee document in Firestore
+      const traineeData: any = {
         firstName: data.firstName,
         surname: data.surname,
         middleName: data.middleName,
@@ -176,29 +170,52 @@ export default function TraineeRegistrationPage() {
         lga: data.lga,
         email: data.email,
         phone: data.phone,
+        role: "trainee" as const,
+        isVerified: false,
+        tagNumber: tagNumber || 'pending',
         verificationMethod: data.verificationMethod,
-        verificationCode: verificationCode,
-        sponsorId: data.sponsorId || undefined,
-        batchId: data.batchId || undefined
-      });
-      
-      const result = await registrationResponse.json();
-      
+        roomNumber: room?.roomNumber || 'pending',
+        roomBlock: room?.roomBlock || 'pending',
+        bedSpace: room?.bedSpace || 'pending',
+        allocationStatus: (tagNumber && room) ? 'allocated' : 'pending',
+      };
+
+      // Only add sponsorId and batchId if they have values
+      if (data.sponsorId && data.sponsorId.trim() !== "") {
+        traineeData.sponsorId = data.sponsorId;
+      }
+      if (data.batchId && data.batchId.trim() !== "") {
+        traineeData.batchId = data.batchId;
+      }
+
+      await createTrainee(traineeData);
+
+      const allocationMessage = tagNumber && room 
+        ? `Welcome ${data.firstName}! Your tag number is ${tagNumber}. Room: ${room.roomBlock} ${room.roomNumber} (Bed Space: ${room.bedSpace})`
+        : `Welcome ${data.firstName}! Your registration is complete. ${!tagNumber ? 'Tag number allocation pending.' : ''} ${!room ? 'Room allocation pending.' : ''} You will be notified when allocations are available.`;
+
       toast({
         title: "Registration Successful!",
-        description: `Welcome ${data.firstName}! Your tag number is ${result.trainee.tagNumber}. ${result.trainee.roomBlock ? `Room: ${result.trainee.roomBlock} ${result.trainee.roomNumber}` : 'Room allocation pending.'}`,
+        description: allocationMessage,
       });
-      
-      // Invalidate and refetch trainees list
-      queryClient.invalidateQueries({ queryKey: ['/api/trainees'] });
-      
-      // Redirect to dashboard
+
       setLocation("/dashboard");
-      
     } catch (error: any) {
+      console.error("Registration error details:", error);
+      
+      // More specific error handling
+      let errorMessage = "Registration failed";
+      if (error.code === 'permission-denied') {
+        errorMessage = "Permission denied. Please check Firestore security rules.";
+      } else if (error.code === 'unavailable') {
+        errorMessage = "Firebase service unavailable. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Registration Failed",
-        description: error.message || "An error occurred during registration",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -316,23 +333,60 @@ export default function TraineeRegistrationPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="Enter email" 
+                        autoComplete="new-email"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel"
+                        placeholder="+234 or 0" 
+                        autoComplete="new-tel"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
                 name="state"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>State</FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Reset LGA when state changes
-                        form.setValue("lga", "");
-                      }} 
-                      value={field.value || ""}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select state">
-                            {field.value ? NIGERIAN_STATES.find(state => state.value === field.value)?.label : "Select state"}
-                          </SelectValue>
+                          <SelectValue placeholder="Select your state" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -353,58 +407,27 @@ export default function TraineeRegistrationPage() {
                 name="lga"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Local Government Area</FormLabel>
-                    <Select
-                      key={selectedState} // Force re-render when state changes
-                      onValueChange={field.onChange}
-                      value={field.value || ""}
-                      disabled={!selectedState}
-                    >
+                    <FormLabel>LGA</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select LGA">
-                            {field.value || "Select LGA"}
-                          </SelectValue>
+                          <SelectValue placeholder="Select your LGA" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {availableLGAs.map((lga) => (
-                          <SelectItem key={lga} value={lga}>
-                            {lga}
+                        {form.watch("state") && STATES_LGAS[form.watch("state")] ? (
+                          STATES_LGAS[form.watch("state")].map((lga) => (
+                            <SelectItem key={lga} value={lga}>
+                              {lga}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-state-selected" disabled>
+                            Select a state first
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="Enter email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+234 or 0" {...field} />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -591,7 +614,7 @@ export default function TraineeRegistrationPage() {
 
             {/* Form */}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" autoComplete="off" key={currentStep}>
                 {renderStepContent()}
 
                 {/* Navigation Buttons */}

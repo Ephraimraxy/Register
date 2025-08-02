@@ -25,7 +25,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function VerificationLoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login } = useAuth();
   const [step, setStep] = useState<"identifier" | "verification">("identifier");
   const [isLoading, setIsLoading] = useState(false);
   const [sentTo, setSentTo] = useState("");

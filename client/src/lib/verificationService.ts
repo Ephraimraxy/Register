@@ -1,5 +1,4 @@
-import { storage } from "../storage";
-import { type InsertVerificationCode } from "@shared/schema";
+import { createVerificationCode, getVerificationCode, markVerificationCodeAsUsed } from "./firebaseService";
 
 export class VerificationService {
   static generateCode(): string {
@@ -14,17 +13,8 @@ export class VerificationService {
   static async sendVerificationCode(identifier: string, method: 'email' | 'phone'): Promise<{ code: string; success: boolean; message: string }> {
     try {
       const code = this.generateCode();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Code expires in 10 minutes
-
-      const verificationCode: InsertVerificationCode = {
-        identifier,
-        code,
-        expiresAt,
-        isUsed: false
-      };
-
-      await storage.createVerificationCode(verificationCode);
+      
+      await createVerificationCode(identifier, code);
 
       // In a real application, you would send the code via email or SMS
       // For now, we'll just return the code for demonstration
@@ -53,7 +43,7 @@ export class VerificationService {
 
   static async verifyCode(identifier: string, code: string): Promise<{ success: boolean; message: string; isExpired?: boolean }> {
     try {
-      const verificationCode = await storage.getVerificationCode(identifier, code);
+      const verificationCode = await getVerificationCode(identifier, code);
       
       if (!verificationCode) {
         return {
@@ -70,7 +60,7 @@ export class VerificationService {
         };
       }
 
-      await storage.markVerificationCodeAsUsed(verificationCode.id);
+      await markVerificationCodeAsUsed(verificationCode.id);
 
       return {
         success: true,
@@ -84,12 +74,4 @@ export class VerificationService {
       };
     }
   }
-
-  static async cleanupExpiredCodes(): Promise<void> {
-    try {
-      await storage.cleanupExpiredCodes();
-    } catch (error) {
-      console.error('Error cleaning up expired codes:', error);
-    }
-  }
-}
+} 

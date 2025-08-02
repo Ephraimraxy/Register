@@ -16,32 +16,36 @@ export default function RegistrationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Staff Registration */}
-              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 transition-colors cursor-pointer">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bus className="text-purple-600" size={24} />
+              <Link href="/staff-registration">
+                <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 transition-colors cursor-pointer">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Bus className="text-purple-600" size={24} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Staff</h3>
+                    <p className="text-gray-600 text-sm">Register administrative and support staff members</p>
+                    <Button className="w-full mt-4 bg-purple-600 hover:bg-purple-700">
+                      Register Staff
+                    </Button>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Staff</h3>
-                  <p className="text-gray-600 text-sm">Register administrative and support staff members</p>
-                  <Button className="w-full mt-4 bg-gray-400 cursor-not-allowed" disabled>
-                    Coming Soon
-                  </Button>
                 </div>
-              </div>
+              </Link>
 
               {/* Resource Person Registration */}
-              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 transition-colors cursor-pointer">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Presentation className="text-amber-600" size={24} />
+              <Link href="/resource-person-registration">
+                <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 transition-colors cursor-pointer">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Presentation className="text-amber-600" size={24} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Resource Person</h3>
+                    <p className="text-gray-600 text-sm">Register trainers and subject matter experts</p>
+                    <Button className="w-full mt-4 bg-amber-600 hover:bg-amber-700">
+                      Register Resource Person
+                    </Button>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Resource Person</h3>
-                  <p className="text-gray-600 text-sm">Register trainers and subject matter experts</p>
-                  <Button className="w-full mt-4 bg-gray-400 cursor-not-allowed" disabled>
-                    Coming Soon
-                  </Button>
                 </div>
-              </div>
+              </Link>
 
               {/* Trainee Registration */}
               <Link href="/registration/trainee">

@@ -6,6 +6,7 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 
 // Your web app's Firebase configuration
+
 const firebaseConfig = {
   apiKey: "AIzaSyBx7axnsxE55MKwZBFKOGhzOtFeme8qNoA",
   authDomain: "trms-4f542.firebaseapp.com",
@@ -15,7 +16,6 @@ const firebaseConfig = {
   appId: "1:419302910396:web:fb29b1e13bb956a4c0e3b9",
   measurementId: "G-R78HR9DLX0"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 

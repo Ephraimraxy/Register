@@ -23,6 +23,8 @@
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
   --ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .dark {
@@ -46,6 +48,8 @@
   --destructive-foreground: hsl(0, 0%, 98%);
   --ring: hsl(240, 4.9%, 83.9%);
   --radius: 0.5rem;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 }
 
 @layer base {
@@ -55,5 +59,36 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Smooth transitions for theme changes */
+  * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Ensure proper contrast for focus states */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
